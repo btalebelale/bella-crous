@@ -5,6 +5,8 @@ on:
     # Toutes les 5 minutes (minimum autorisé par GitHub). (GitHub peut retarder les crons en cas de forte charge.)
     - cron: "*/5 * * * *"
   workflow_dispatch: {}   # permet de lancer manuellement depuis l'onglet Actions
+  repository_dispatch:    # déclenchement externe fiable (ex : cron-job.org)
+    types: [crous-check]
 
 # Nécessaire pour committer l'état (annonces déjà vues) dans le dépôt.
 permissions:
