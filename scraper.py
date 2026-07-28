@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from html import unescape
@@ -135,7 +136,15 @@ def main() -> int:
     for url in urls:
         try:
             html = fetch(url)
-        except Exception as exc:  # réseau / HTTP : on n'écrase pas l'état, on retente au prochain run
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if exc.code == 503 and "maintenance" in body.lower():
+                print(f"Site CROUS en maintenance ({zone_label(url)}), on réessaie au prochain run.")
+                set_output("has_new", "false")
+                return 0
+            print(f"ERREUR de récupération ({zone_label(url)}) : {exc}", file=sys.stderr)
+            return 1
+        except Exception as exc:  # réseau : on n'écrase pas l'état, on retente au prochain run
             print(f"ERREUR de récupération ({zone_label(url)}) : {exc}", file=sys.stderr)
             return 1
         count, listings = parse(html)
