@@ -7,7 +7,8 @@ extrait les annonces, et signale les NOUVELLES annonces par rapport au dernier p
 Aucune dépendance externe : uniquement la bibliothèque standard Python.
 
 Variables d'environnement :
-  SEARCH_URL   URL de recherche CROUS (obligatoire), ex :
+  SEARCH_URL   URL(s) de recherche CROUS (obligatoire), séparées par des espaces ou
+               des retours à la ligne, ex :
                https://trouverunlogement.lescrous.fr/tools/42/search?bounds=2.2_48.9_2.4_48.8
   STATE_FILE   Fichier de suivi des annonces déjà vues (défaut : state.json)
   GITHUB_OUTPUT  (fourni par GitHub Actions) reçoit has_new / count / subject
@@ -19,6 +20,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 from html import unescape
 
@@ -81,7 +83,20 @@ def save_state(path: str, ids):
         json.dump({"seen": sorted(ids)}, f, ensure_ascii=False, indent=2)
 
 
-def build_html(new_listings, url):
+def zone_label(url: str) -> str:
+    """Nom de la zone d'une URL de recherche (paramètre locationName), sinon l'URL."""
+    qs = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    name = qs.get("locationName", [""])[0]
+    return name or url
+
+
+def build_html(new_listings, urls):
+    buttons = "".join(
+        f"""<a href="{u}" style="background:#000091;color:#fff;padding:10px 16px;
+           text-decoration:none;border-radius:4px;margin-right:8px;display:inline-block;
+           margin-bottom:8px">{zone_label(u)}</a>"""
+        for u in urls
+    )
     rows = "".join(
         f"""<tr>
           <td style="padding:8px;border-bottom:1px solid #eee">
@@ -95,10 +110,7 @@ def build_html(new_listings, url):
     return f"""<div style="font-family:Arial,sans-serif;max-width:600px">
       <h2 style="color:#000091">🏠 {len(new_listings)} nouveau(x) logement(s) CROUS disponible(s)</h2>
       <table style="width:100%;border-collapse:collapse">{rows}</table>
-      <p style="margin-top:16px">
-        <a href="{url}" style="background:#000091;color:#fff;padding:10px 16px;
-           text-decoration:none;border-radius:4px">Voir la recherche</a>
-      </p>
+      <p style="margin-top:16px">{buttons}</p>
       <p style="color:#999;font-size:12px">Dépêche-toi, les logements CROUS partent vite.</p>
     </div>"""
 
@@ -112,21 +124,25 @@ def set_output(key: str, value: str):
 
 
 def main() -> int:
-    url = os.environ.get("SEARCH_URL", "").strip()
-    if not url:
+    urls = os.environ.get("SEARCH_URL", "").split()
+    if not urls:
         print("ERREUR : la variable SEARCH_URL n'est pas définie.", file=sys.stderr)
         return 2
 
     state_file = os.environ.get("STATE_FILE", "state.json")
 
-    try:
-        html = fetch(url)
-    except Exception as exc:  # réseau / HTTP : on n'écrase pas l'état, on retente au prochain run
-        print(f"ERREUR de récupération : {exc}", file=sys.stderr)
-        return 1
-
-    count, listings = parse(html)
-    print(f"Compteur du site : {count} | annonces parsées : {len(listings)}")
+    listings_by_id = {}
+    for url in urls:
+        try:
+            html = fetch(url)
+        except Exception as exc:  # réseau / HTTP : on n'écrase pas l'état, on retente au prochain run
+            print(f"ERREUR de récupération ({zone_label(url)}) : {exc}", file=sys.stderr)
+            return 1
+        count, listings = parse(html)
+        print(f"{zone_label(url)} — compteur du site : {count} | annonces parsées : {len(listings)}")
+        for l in listings:
+            listings_by_id[l["id"]] = l
+    listings = list(listings_by_id.values())
 
     seen = load_state(state_file)
     current_ids = {l["id"] for l in listings}
@@ -140,7 +156,7 @@ def main() -> int:
 
     if new_listings:
         with open("notification.html", "w", encoding="utf-8") as f:
-            f.write(build_html(new_listings, url))
+            f.write(build_html(new_listings, urls))
         set_output("has_new", "true")
         set_output("count", str(len(new_listings)))
         set_output("subject", f"🏠 {len(new_listings)} logement(s) CROUS dispo !")

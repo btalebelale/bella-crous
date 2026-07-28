@@ -34,6 +34,9 @@ New repository variable** :
 |--------------|-------------------------------------------|
 | `SEARCH_URL` | l'URL de recherche copiée ci-dessus       |
 
+Pour surveiller **plusieurs villes**, mets plusieurs URLs dans `SEARCH_URL`,
+une par ligne (ou séparées par des espaces).
+
 ### 3. Configurer l'email (Gmail)
 Il faut un **mot de passe d'application** Gmail (pas ton mot de passe normal) :
 1. Active la validation en 2 étapes sur ton compte Google.
