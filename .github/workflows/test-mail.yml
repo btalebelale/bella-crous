@@ -1,0 +1,30 @@
+name: Test email (manuel)
+
+# Envoie un mail de test aux destinataires configurés dans MAIL_TO.
+# Sert à vérifier la configuration email sans attendre qu'un logement se libère.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Envoyer un email de test
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ Test veille CROUS"
+          to: ${{ secrets.MAIL_TO }}
+          from: Veille CROUS <${{ secrets.MAIL_USERNAME }}>
+          html_body: |
+            <div style="font-family:Arial,sans-serif;max-width:600px">
+              <h2 style="color:#000091">✅ Test de la veille CROUS</h2>
+              <p>Si tu reçois ce message, tu es bien dans la liste des
+                 destinataires des alertes logement.</p>
+              <p style="color:#999;font-size:12px">Mail de test envoyé
+                 manuellement, aucune annonce n'est concernée.</p>
+            </div>

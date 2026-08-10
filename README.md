@@ -50,7 +50,10 @@ secret**, ajoute :
 |-----------------|------------------------------------------------|
 | `MAIL_USERNAME` | ton adresse Gmail (`toi@gmail.com`)            |
 | `MAIL_PASSWORD` | le mot de passe d'application (16 caractères)  |
-| `MAIL_TO`       | l'adresse qui reçoit les alertes               |
+| `MAIL_TO`       | la ou les adresses qui reçoivent les alertes   |
+
+Pour prévenir plusieurs personnes, mets toutes les adresses dans `MAIL_TO`
+séparées par des virgules : `moi@gmail.com,quelquun@exemple.fr`.
 
 ### 4. Activer et tester
 - Onglet **Actions** → active les workflows si demandé.
