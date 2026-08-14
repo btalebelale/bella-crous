@@ -1,6 +1,7 @@
 name: Test email (manuel)
 
 # Envoie un mail de test aux destinataires configurés dans MAIL_TO.
+# Un message séparé est envoyé à chaque destinataire.
 # Sert à vérifier la configuration email sans attendre qu'un logement se libère.
 on:
   workflow_dispatch: {}
@@ -9,18 +10,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Envoyer un email de test
-        uses: dawidd6/action-send-mail@v3
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Python
+        uses: actions/setup-python@v5
         with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ Test veille CROUS"
-          to: ${{ secrets.MAIL_TO }}
-          from: Veille CROUS <${{ secrets.MAIL_USERNAME }}>
-          html_body: |
+          python-version: "3.12"
+
+      - name: Envoyer un email de test à chaque destinataire
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_TO_EXTRA: ${{ secrets.MAIL_TO_EXTRA }}
+          MAIL_SUBJECT: "✅ Test veille CROUS"
+          MAIL_HTML: |
             <div style="font-family:Arial,sans-serif;max-width:600px">
               <h2 style="color:#000091">✅ Test de la veille CROUS</h2>
               <p>Si tu reçois ce message, tu es bien dans la liste des
@@ -28,3 +33,4 @@ jobs:
               <p style="color:#999;font-size:12px">Mail de test envoyé
                  manuellement, aucune annonce n'est concernée.</p>
             </div>
+        run: python send_mail.py

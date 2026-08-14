@@ -10,7 +10,8 @@ grâce à **GitHub Actions** (aucun serveur à héberger, gratuit).
 2. Le script récupère la page de résultats de ta recherche (rendue côté serveur)
    et extrait les annonces (titre, prix, adresse, lien).
 3. Il compare avec le dernier passage (`state.json`) : si une **nouvelle** annonce
-   apparaît, il t'envoie un email récapitulatif.
+   apparaît, `send_mail.py` envoie un email récapitulatif — **un message séparé
+   par destinataire**.
 4. L'état est re-committé dans le dépôt pour ne pas te notifier deux fois pour la
    même annonce (une annonce qui disparaît puis revient te re-notifie).
 
@@ -54,6 +55,18 @@ secret**, ajoute :
 
 Pour prévenir plusieurs personnes, mets toutes les adresses dans `MAIL_TO`
 séparées par des virgules : `moi@gmail.com,quelquun@exemple.fr`.
+
+Chaque destinataire reçoit **son propre message** : personne ne voit les adresses
+des autres, et un envoi qui échoue n'empêche pas les suivants.
+
+Un second secret **facultatif** `MAIL_TO_EXTRA` (même format) est fusionné avec
+`MAIL_TO`. Pratique pour ajouter quelqu'un sans avoir à retaper la liste
+existante — les doublons entre les deux sont ignorés.
+
+Pour **ajouter une adresse** : Settings → Secrets and variables → Actions →
+Secrets → `MAIL_TO` (ou `MAIL_TO_EXTRA`) → *Update*, puis ajoute la nouvelle
+adresse à la suite, séparée par une virgule. Vérifie ensuite avec le workflow
+**Test email (manuel)**.
 
 ### 4. Activer et tester
 - Onglet **Actions** → active les workflows si demandé.

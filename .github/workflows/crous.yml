@@ -34,19 +34,17 @@ jobs:
           SEARCH_URL: ${{ vars.SEARCH_URL }}
         run: python scraper.py
 
-      - name: Envoyer l'email si nouveau logement
+      # Un message séparé par destinataire (personne ne voit les adresses des autres).
+      - name: Envoyer les emails si nouveau logement
         if: steps.scrape.outputs.has_new == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: ${{ steps.scrape.outputs.subject }}
-          to: ${{ secrets.MAIL_TO }}
-          from: Veille CROUS <${{ secrets.MAIL_USERNAME }}>
-          html_body: file://notification.html
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_TO_EXTRA: ${{ secrets.MAIL_TO_EXTRA }}
+          MAIL_SUBJECT: ${{ steps.scrape.outputs.subject }}
+          MAIL_HTML_FILE: notification.html
+        run: python send_mail.py
 
       - name: Sauvegarder l'état (annonces déjà vues)
         run: |
