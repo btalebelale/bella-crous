@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -36,10 +37,15 @@ RE_LINK = re.compile(r'href="(/tools/\d+/accommodations/(\d+))"[^>]*>([^<]+)</a>
 RE_PRICE = re.compile(r'fr-badge">([^<]+)</p>')
 RE_DESC = re.compile(r'fr-card__desc">([^<]+)</p>')
 RE_COUNT = re.compile(r'(\d+)\s+logements?\s+trouv')
+RE_COUNT_ZERO = re.compile(r'[Aa]ucun\s+logement\s+trouv')
 BASE = "https://trouverunlogement.lescrous.fr"
 
+# Le site CROUS renvoie régulièrement des 500 passagers : on retente avant d'abandonner.
+RETRIES = 3
+RETRY_DELAY = 3
 
-def fetch(url: str) -> str:
+
+def fetch_once(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Encoding": "gzip"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read()
@@ -48,10 +54,27 @@ def fetch(url: str) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+def fetch(url: str) -> str:
+    """Récupère la page, en retentant les erreurs serveur (5xx) et réseau."""
+    for attempt in range(1, RETRIES + 1):
+        try:
+            return fetch_once(url)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            # URLError couvre HTTPError : on ne retente que les erreurs serveur.
+            fatal = isinstance(exc, urllib.error.HTTPError) and exc.code < 500
+            if fatal or attempt == RETRIES:
+                raise
+            print(f"  tentative {attempt}/{RETRIES} échouée ({zone_label(url)}: {exc}), nouvel essai…")
+            time.sleep(RETRY_DELAY)
+
+
 def parse(html: str):
     """Retourne (count_annonce, liste d'annonces)."""
     count_match = RE_COUNT.search(html)
-    count = int(count_match.group(1)) if count_match else None
+    if count_match:
+        count = int(count_match.group(1))
+    else:
+        count = 0 if RE_COUNT_ZERO.search(html) else None
 
     listings = {}
     for chunk in html.split(CARD_SPLIT)[1:]:
@@ -137,16 +160,21 @@ def main() -> int:
         try:
             html = fetch(url)
         except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
+            try:
+                body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
             if exc.code == 503 and "maintenance" in body.lower():
                 print(f"Site CROUS en maintenance ({zone_label(url)}), on réessaie au prochain run.")
                 set_output("has_new", "false")
                 return 0
-            print(f"ERREUR de récupération ({zone_label(url)}) : {exc}", file=sys.stderr)
-            return 1
+            print(f"Site CROUS indisponible ({zone_label(url)}) : {exc}. On réessaie au prochain run.")
+            set_output("has_new", "false")
+            return 0
         except Exception as exc:  # réseau : on n'écrase pas l'état, on retente au prochain run
-            print(f"ERREUR de récupération ({zone_label(url)}) : {exc}", file=sys.stderr)
-            return 1
+            print(f"Récupération impossible ({zone_label(url)}) : {exc}. On réessaie au prochain run.")
+            set_output("has_new", "false")
+            return 0
         count, listings = parse(html)
         print(f"{zone_label(url)} — compteur du site : {count} | annonces parsées : {len(listings)}")
         for l in listings:
