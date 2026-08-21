@@ -42,6 +42,7 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
           MAIL_TO_EXTRA: ${{ secrets.MAIL_TO_EXTRA }}
+          MAIL_TO_WISSAL: ${{ secrets.MAIL_TO_WISSAL }}
           MAIL_SUBJECT: ${{ steps.scrape.outputs.subject }}
           MAIL_HTML_FILE: notification.html
         run: python send_mail.py

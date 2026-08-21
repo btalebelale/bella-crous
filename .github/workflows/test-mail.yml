@@ -1,10 +1,17 @@
 name: Test email (manuel)
 
-# Envoie un mail de test aux destinataires configurés dans MAIL_TO.
-# Un message séparé est envoyé à chaque destinataire.
-# Sert à vérifier la configuration email sans attendre qu'un logement se libère.
+# Envoie un mail de test à chaque destinataire (secrets MAIL_TO*), un message
+# séparé par personne. Sert à vérifier la configuration email sans attendre
+# qu'un logement se libère.
+# L'entrée « to » permet de ne tester qu'une seule adresse, par exemple après
+# avoir ajouté quelqu'un, sans envoyer de mail inutile aux autres.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      to:
+        description: "Tester une seule adresse (laisser vide = tous les destinataires)"
+        required: false
+        default: ""
 
 jobs:
   test:
@@ -24,6 +31,8 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
           MAIL_TO_EXTRA: ${{ secrets.MAIL_TO_EXTRA }}
+          MAIL_TO_WISSAL: ${{ secrets.MAIL_TO_WISSAL }}
+          ONLY_TO: ${{ inputs.to }}
           MAIL_SUBJECT: "✅ Test veille CROUS"
           MAIL_HTML: |
             <div style="font-family:Arial,sans-serif;max-width:600px">
@@ -33,4 +42,11 @@ jobs:
               <p style="color:#999;font-size:12px">Mail de test envoyé
                  manuellement, aucune annonce n'est concernée.</p>
             </div>
-        run: python send_mail.py
+        run: |
+          # Adresse unique demandée : on écarte tous les autres MAIL_TO_*
+          # pour ne déranger personne d'autre.
+          if [[ -n "$ONLY_TO" ]]; then
+            unset "${!MAIL_TO@}"
+            export MAIL_TO="$ONLY_TO"
+          fi
+          python send_mail.py

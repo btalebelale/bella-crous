@@ -11,8 +11,12 @@ Variables d'environnement :
   MAIL_PASSWORD   mot de passe d'application Gmail (obligatoire)
   MAIL_TO         destinataires, séparés par des virgules, points-virgules,
                   espaces ou retours à la ligne (obligatoire)
-  MAIL_TO_EXTRA   destinataires supplémentaires, même format (facultatif) ;
-                  fusionnés avec MAIL_TO, les doublons sont ignorés
+  MAIL_TO_*       toute variable dont le nom commence par MAIL_TO (par exemple
+                  MAIL_TO_EXTRA, MAIL_TO_WISSAL) ajoute des destinataires, même
+                  format ; toutes sont fusionnées, les doublons sont ignorés.
+                  Ajouter quelqu'un = créer un nouveau secret, sans jamais
+                  réécrire — donc sans risquer d'effacer — les adresses déjà en
+                  place (un secret GitHub ne se relit pas, il ne se remplace).
   MAIL_SUBJECT    objet du message (défaut : "Veille CROUS")
   MAIL_HTML_FILE  fichier contenant le corps HTML
   MAIL_HTML       corps HTML en clair (utilisé si MAIL_HTML_FILE est absent)
@@ -57,7 +61,7 @@ def main() -> int:
     sender = os.environ.get("MAIL_USERNAME", "").strip()
     password = os.environ.get("MAIL_PASSWORD", "")
     raw_to = " ".join(
-        v for v in (os.environ.get("MAIL_TO", ""), os.environ.get("MAIL_TO_EXTRA", "")) if v
+        value for name, value in sorted(os.environ.items()) if name.startswith("MAIL_TO") and value
     )
 
     missing = [
@@ -65,7 +69,7 @@ def main() -> int:
         for name, value in (
             ("MAIL_USERNAME", sender),
             ("MAIL_PASSWORD", password),
-            ("MAIL_TO / MAIL_TO_EXTRA", raw_to.strip()),
+            ("MAIL_TO*", raw_to.strip()),
         )
         if not value
     ]
@@ -75,7 +79,7 @@ def main() -> int:
 
     to_list = recipients(raw_to)
     if not to_list:
-        print("ERREUR : aucun destinataire valide dans MAIL_TO.", file=sys.stderr)
+        print("ERREUR : aucun destinataire valide dans MAIL_TO*.", file=sys.stderr)
         return 2
 
     html_file = os.environ.get("MAIL_HTML_FILE", "")

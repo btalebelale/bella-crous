@@ -59,14 +59,28 @@ séparées par des virgules : `moi@gmail.com,quelquun@exemple.fr`.
 Chaque destinataire reçoit **son propre message** : personne ne voit les adresses
 des autres, et un envoi qui échoue n'empêche pas les suivants.
 
-Un second secret **facultatif** `MAIL_TO_EXTRA` (même format) est fusionné avec
-`MAIL_TO`. Pratique pour ajouter quelqu'un sans avoir à retaper la liste
-existante — les doublons entre les deux sont ignorés.
+Tout secret dont le nom **commence par `MAIL_TO`** (`MAIL_TO_EXTRA`,
+`MAIL_TO_WISSAL`…) ajoute des destinataires : ils sont tous fusionnés et les
+doublons ignorés (majuscules comprises).
 
-Pour **ajouter une adresse** : Settings → Secrets and variables → Actions →
-Secrets → `MAIL_TO` (ou `MAIL_TO_EXTRA`) → *Update*, puis ajoute la nouvelle
-adresse à la suite, séparée par une virgule. Vérifie ensuite avec le workflow
-**Test email (manuel)**.
+Pour **ajouter une adresse**, crée un **nouveau** secret plutôt que de modifier
+un existant : Settings → Secrets and variables → Actions → Secrets → *New
+repository secret*, nom `MAIL_TO_PRENOM`, valeur l'adresse. En une commande :
+
+```bash
+gh secret set MAIL_TO_PRENOM --body "quelquun@exemple.fr"
+```
+
+Ajoute ensuite `MAIL_TO_PRENOM: ${{ secrets.MAIL_TO_PRENOM }}` sous les autres
+`MAIL_TO_*` dans les deux workflows (`crous.yml` et `test-mail.yml`) : GitHub
+n'expose au job que les secrets nommés explicitement.
+
+Pourquoi un secret par personne plutôt qu'une liste à rallonge ? Un secret
+GitHub **ne peut pas être relu**, seulement remplacé en entier : pour rallonger
+`MAIL_TO` il faut retaper toutes les adresses de mémoire, et en oublier une la
+supprime silencieusement de la liste. Un nouveau secret ne touche à rien.
+
+Vérifie ensuite avec le workflow **Test email (manuel)**.
 
 ### 4. Activer et tester
 - Onglet **Actions** → active les workflows si demandé.
